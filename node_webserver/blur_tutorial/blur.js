@@ -5,10 +5,15 @@ function inRange(i, width, height) {
     return ((i>=0) && (i < width*height*4));
 }
 function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, imageBorder) {
+    const gausConst = {
+        corner: 0.0947416,
+        neighbour: 0.118318,
+        center: 0.147761
+    }
     var v = imageData[i];
     let firstRow = 0;
     let lastRow = height-1;
-    let currentRow = Math.floor(i/height/2);
+    let currentRow = Math.floor(i/width/4);
 // cardinal directions
     var north = inRange(i-width*4, width, height) ? imageData[i-width*4] : v;
     var south = inRange(i+width*4, width, height) ? imageData[i+width*4] : v;
@@ -20,7 +25,7 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
     var se = inRange(i+width*4+4, width, height) ? imageData[i+width*4+4] : v;
     var sw = inRange(i+width*4-4, width, height) ? imageData[i+width*4-4] : v;
 // average
-    var newVal = Math.floor((north + south + east + west + se + sw + ne + nw + v)/9);
+    var newVal = Math.floor((north*gausConst.neighbour+ south*gausConst.neighbour+ east*gausConst.neighbour+ west*gausConst.neighbour+ se*gausConst.corner + sw*gausConst.corner + ne*gausConst.corner + nw*gausConst.corner + v*gausConst.center));
     if (isNaN(newVal)) {
         sendStatus("bad value " + i + " for height " + height);
         throw new Error("NaN");
@@ -63,7 +68,8 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
        //console.log(rest);
 
 
-        newVal = Math.floor((north + south + west + sw + nw + east + se + ne + v)/9);
+       // newVal = Math.floor((north + south + west + sw + nw + east + se + ne + v)/9);
+        newVal = Math.floor((north*gausConst.neighbour+ south*gausConst.neighbour+ east*gausConst.neighbour+ west*gausConst.neighbour+ se*gausConst.corner + sw*gausConst.corner + ne*gausConst.corner + nw*gausConst.corner + v*gausConst.center));
         //newVal = Math.floor((north + south + west + sw + nw + v)/6);
         // newVal = Math.floor((north + south + v)/3);
     }
@@ -104,9 +110,10 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
             se = imageBorder[currentRow*400+2];
         }
 */
-        newVal = Math.floor((north + south + west + sw + nw + ne + east + se + v)/9);
+        //newVal = Math.floor((north + south + west + sw + nw + ne + east + se + v)/9);
+        newVal = Math.floor((north*gausConst.neighbour+ south*gausConst.neighbour+ east*gausConst.neighbour+ west*gausConst.neighbour+ se*gausConst.corner + sw*gausConst.corner + ne*gausConst.corner + nw*gausConst.corner + v*gausConst.center));
         //newVal = Math.floor((north + south + east + se + ne + v)/6);
-      //   newVal = Math.floor((north + south +v)/3);
+       // newVal = Math.floor((north + south +v)/3);
     }
     return newVal;
 }
