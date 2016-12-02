@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Johns test sida</title>
+    <script src="javascript/jquery-3.1.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="javascript/index.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<input type="file" id="file_input">
+<form action="">
+    <input type="radio" name="workers" checked="true" value="one_worker">One workers<br>
+    <input type="radio" name="workers" value="two_workers">Two workers<br>
+    <input type="radio" name="workers" value="four_workers">Four workers<br>
+    <input type="radio" name="workers" value="eight_workers">Eight workers
+</form>
+<form action="">
+    <input type="radio" name="size" checked="true" value="twenty_size">Size of tweets: 20 mb<br>
+    <input type="radio" name="size" value="fourty_size">Size of tweets: 40 mb<br>
+    <input type="radio" name="size" value="sixty_size">Size of tweets: 60 mb
+</form>
+    <button class="req_parse_tweets" id="animateButton">Start workers</button>
+</div>
+<svg width="960" height="500">
+</svg>
+</body>
+</html>
