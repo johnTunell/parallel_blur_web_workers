@@ -7,6 +7,7 @@
 <p id="status">Your browser does not support HTML5 Web Workers.</p>
 <button id="startBlurButton" disabled>Blur</button>
 <button id="stopButton" disabled>Stop Workers</button>
+<button id="iterationBlurButton" disabled>Run 30 iterations of blur</button>
 <button onclick="document.location = document.location;">Reload</button>
 <label for="workerCount">Number of Workers</label>
 <select id="workerCount">
@@ -20,11 +21,14 @@
 <div id="image2Container"></div>
 <div id="logOutput"></div>
 <script>
-    var imageURL = "image02.png";
+    var imageURL = "image1.png";
     var image;
     var ctx;
     var ctx2;
     var workers = [];
+    var begin;
+    var end;
+    var timeSpent;
     function log(s) {
         var logOutput = document.getElementById("logOutput");
         logOutput.innerHTML = s + "<br>" + logOutput.innerHTML;
@@ -40,7 +44,7 @@
         worker.addEventListener("error", errorHandler, true);
         return worker;
     }
-    function startBlur() {
+    function startBlur(isIterationBlur, iteration) {
         var workerCount = parseInt(document.getElementById("workerCount").value);
         var width = image.width/workerCount;
         for (var i=0; i<workerCount; i++) {
@@ -50,11 +54,12 @@
             workers[i] = worker;
             let isFirst = i === 0 ? true : false;
             let isLast = i + 1 === workerCount ? true : false;
-            sendBlurTask(worker, i, width, isFirst, isLast);
+
+            sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration);
         }
         setRunningState(true);
     }
-    function sendBlurTask(worker, i, chunkWidth, isFirst, isLast) {
+    function sendBlurTask(worker, i, chunkWidth, isFirst, isLast, isIterationBlur, iteration) {
         var chunkHeight = image.height;
         var chunkStartX = i * chunkWidth;
         var chunkStartY = 0;
@@ -77,7 +82,9 @@
             'imageBorderLeft' : imageBorderLeft,
             'imageBorderRight' : imageBorderRight,
             'isFirst' : isFirst,
-            'isLast' : isLast
+            'isLast' : isLast,
+            'isIteration' : isIterationBlur,
+            'iteration' : iteration
         });
     }
 
@@ -85,13 +92,16 @@
         for (var i=0; i<workers.length; i++) {
             workers[i].terminate();
         }
+        end = Date.now();
+        timeSpent = (end - begin) / 1000 + " secs";
+        console.log(timeSpent);
         setRunningState(false);
     }
     function messageHandler(e) {
         var messageType = e.data.type;
         switch (messageType) {
             case ("status"):
-                log(e.data.statusText);
+                //log(e.data.statusText);
                 break;
             case ("progress"):
                 var imageData = ctx.createImageData(e.data.width, e.data.height);
@@ -105,7 +115,12 @@
                 }
                 ctx.putImageData(imageData, e.data.startX, 0);
 // blur the same tile again
-                sendBlurTask(e.target, e.target.index, e.target.width, e.data.isFirst, e.data.isLast);
+                if((e.data.isIteration && e.data.iteration <= 30) || !(e.data.isIteration)) {
+                    console.log(e.data.iteration);
+                    sendBlurTask(e.target, e.target.index, e.target.width, e.data.isFirst, e.data.isLast, e.data.isIteration, e.data.iteration + 1);
+                } else {
+                    stopBlur();
+                }
                 break;
             default:
                 break;
@@ -135,10 +150,17 @@
         if (typeof(Worker) !== "undefined") {
             document.getElementById("status").innerHTML = "Your browser supports HTML5 WebWorkers";
             document.getElementById("stopButton").onclick = stopBlur;
-            document.getElementById("startBlurButton").onclick = startBlur;
+            document.getElementById('startBlurButton').addEventListener('click', () => {startBlur(false, 1)});
+            //document.getElementById("iterationBlurButton").onclick = startBlur(true);
+            document.getElementById('iterationBlurButton').addEventListener('click', () => {
+                startBlur(true, 1);
+                begin = Date.now();
+                console.time('BlurTimer');
+            });
             loadImageData(imageURL);
             document.getElementById("startBlurButton").disabled = true;
             document.getElementById("stopButton").disabled = true;
+            document.getElementById("iterationBlurButton").disabled = false;
         }
     }
     window.addEventListener("load", loadDemo, true);

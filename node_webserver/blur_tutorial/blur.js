@@ -57,9 +57,6 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
            se = imageBorder[(currentRow*4)+rest+4];
        }
 
-       if(currentRow === lastRow) {
-           console.log('at last row');
-       }
 
        if(currentRow !== firstRow ) {
            ne = imageBorder[(currentRow*4)+rest-4];
@@ -84,9 +81,6 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
             sw = imageBorder[(currentRow*4)+rest+4];
         }
 
-        if(currentRow === lastRow) {
-            console.log('at last row');
-        }
 
         if(currentRow !== firstRow ) {
             nw = imageBorder[(currentRow*4)+rest-4];
@@ -117,9 +111,10 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
     }
     return newVal;
 }
-function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, isFirst) {
+function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, isFirst, isIteration, rec) {
     var data = [];
     var val = 0;
+
 
     for (var i = 0; i < width * height * 4; i++) {
         val = averageNeighbors(imageData, width, height, i);
@@ -140,7 +135,16 @@ function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, is
         }
         data[i] = val;
     }
-    return data;
+
+       /* if(rec === 0) {
+            return data;
+        } else {
+            imageBorderLeft = boxBlur(imageBorderLeft, 1, height, [0], [0], isFirst, isIteration, 0);
+            imageBorderRight = boxBlur(imageBorderRight, 1, height, [0], [0], isFirst, isIteration, 0);
+            return boxBlur(data, width, height, imageBorderLeft, imageBorderRight, isFirst, isIteration, rec-1);
+        }
+*/
+       return data;
 }
 
 

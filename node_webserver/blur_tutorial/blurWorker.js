@@ -18,14 +18,16 @@ function messageHandler(e) {
             sendStatus("Worker started blur on data in range: " +
                 e.data.startX + "-" + (e.data.startX+e.data.width));
             var imageData = e.data.imageData;
-            imageData = boxBlur(imageData, e.data.width, e.data.height, e.data.imageBorderLeft,  e.data.imageBorderRight, e.data.isFirst);
+            imageData = boxBlur(imageData, e.data.width, e.data.height, e.data.imageBorderLeft,  e.data.imageBorderRight, e.data.isFirst, e.data.isIteration, e.data.iteration, 1);
             postMessage({"type" : "progress",
                 "imageData" : imageData,
                 "width" : e.data.width,
                 "height" : e.data.height,
                 "startX" : e.data.startX,
                 "isFirst" : e.data.isFirst,
-                "isLast" : e.data.isLast
+                "isLast" : e.data.isLast,
+                'isIteration' : e.data.isIteration,
+                "iteration" : e.data.iteration
             });
             sendStatus("Finished blur on data in range: " +
                 e.data.startX + "-" + (e.data.width+e.data.startX));
