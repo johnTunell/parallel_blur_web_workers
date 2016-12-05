@@ -26,10 +26,10 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
     var sw = inRange(i+width*4-4, width, height) ? imageData[i+width*4-4] : v;
 // average
     var newVal = Math.floor((north*gausConst.neighbour+ south*gausConst.neighbour+ east*gausConst.neighbour+ west*gausConst.neighbour+ se*gausConst.corner + sw*gausConst.corner + ne*gausConst.corner + nw*gausConst.corner + v*gausConst.center));
-    if (isNaN(newVal)) {
+    /*if (isNaN(newVal)) {
         sendStatus("bad value " + i + " for height " + height);
         throw new Error("NaN");
-    }
+    }*/
 
     if(rightBorder) {
         // MIGHT NEED TO CHANGE 2 to number of threads!
@@ -111,11 +111,14 @@ function averageNeighbors(imageData, width, height, i, rightBorder, leftBorder, 
     }
     return newVal;
 }
-function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, isFirst, isIteration, rec) {
-    var data = [];
+function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, isFirst, isIteration) {
+    var returnVal = {
+        data: [],
+        borderRetRight: [],
+        borderRetLeft: []
+    }
+
     var val = 0;
-
-
     for (var i = 0; i < width * height * 4; i++) {
         val = averageNeighbors(imageData, width, height, i);
         // At a border!
@@ -125,26 +128,20 @@ function boxBlur(imageData, width, height, imageBorderLeft, imageBorderRight, is
                 // We are approaching the right border
                 if(imageBorderRight[0] !== 0) {
                     val = averageNeighbors(imageData, width, height, i, true, false, imageBorderRight);
+                    returnVal.borderRetRight.push(val);
                 }
             } else { // We are approaching the left border!
                 //console.log(imageBorderRight);
                 if(imageBorderLeft[0] !== 0) {
                     val = averageNeighbors(imageData, width, height, i, false, true, imageBorderLeft);
+                    returnVal.borderRetLeft.push(val);
                 }
             }
         }
-        data[i] = val;
+        returnVal.data[i] = val;
     }
 
-       /* if(rec === 0) {
-            return data;
-        } else {
-            imageBorderLeft = boxBlur(imageBorderLeft, 1, height, [0], [0], isFirst, isIteration, 0);
-            imageBorderRight = boxBlur(imageBorderRight, 1, height, [0], [0], isFirst, isIteration, 0);
-            return boxBlur(data, width, height, imageBorderLeft, imageBorderRight, isFirst, isIteration, rec-1);
-        }
-*/
-       return data;
+    return returnVal;
 }
 
 

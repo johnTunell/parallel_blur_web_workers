@@ -29,6 +29,7 @@
     var begin;
     var end;
     var timeSpent;
+    var workersFinished = 0;
     function log(s) {
         var logOutput = document.getElementById("logOutput");
         logOutput.innerHTML = s + "<br>" + logOutput.innerHTML;
@@ -86,6 +87,17 @@
             'isIteration' : isIterationBlur,
             'iteration' : iteration
         });
+        worker.postMessage({'type' : 'border',
+            'width' : chunkWidth,
+            'height' : chunkHeight,
+            'startX' : chunkStartX,
+            'imageBorderLeft' : imageBorderLeft,
+            'imageBorderRight' : imageBorderRight,
+            'isFirst' : isFirst,
+            'isLast' : isLast,
+            'isIteration' : isIterationBlur,
+            'iteration' : iteration
+        });
     }
 
     function stopBlur() {
@@ -115,13 +127,30 @@
                 }
                 ctx.putImageData(imageData, e.data.startX, 0);
 // blur the same tile again
-                if((e.data.isIteration && e.data.iteration <= 30) || !(e.data.isIteration)) {
-                    console.log(e.data.iteration);
+                /*if((e.data.isIteration && e.data.iteration <= 30) || !(e.data.isIteration)) {
                     sendBlurTask(e.target, e.target.index, e.target.width, e.data.isFirst, e.data.isLast, e.data.isIteration, e.data.iteration + 1);
                 } else {
                     stopBlur();
                 }
+                */
+                workersFinished++;
+                if(workersFinished === workers.length) {
+                    stopBlur();
+                }
                 break;
+            case ("borderDone"):
+                // NEED TO BE CHANGED OFCOURSE!
+                workers[Math.abs(e.target.index - 1)].postMessage({
+                    'type' : 'border',
+                    'width' : e.target.width,
+                    'height' : 400,
+                    'imageBorderLeft' : e.data.imageBorderRight,
+                    'imageBorderRight' : e.data.imageBorderLeft,
+                    'isFirst' : e.data.isFirst,
+                    'isLast' : e.data.isLast,
+                    'isIteration' : e.data.isIteration,
+                    'iteration' : e.data.iteration + 1
+                });
             default:
                 break;
         }
