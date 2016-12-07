@@ -3,7 +3,7 @@
 
 importScripts("blur.js");
 
-self.imageData = [];
+self.imageData;
 self.startX;
 self.width;
 self.height;
@@ -12,7 +12,9 @@ function messageHandler(e) {
     const messageType = e.data.type;
     switch (messageType) {
         case ("workerConstructor"):
-            this.imageData = e.data.imageData;
+            this.sizeImageData = e.data.sizeImageData;
+            var typed_array = new Uint8ClampedArray(e.data.imageData,0, this.sizeImageData);
+            this.imageData = typed_array;
             this.startX = e.data.startX;
             this.width = e.data.width;
             this.height = e.data.height;
@@ -20,27 +22,36 @@ function messageHandler(e) {
         // When a new border arrives, the worker will blur one iteration, and then if it is the last iteration send back the finished image
         // It it is a iteration in the middle, it will send its new blurred borders, so that the segments next to it will have updated borders.
         case ("newBorder"):
-            const returnVal = boxBlur(this.imageData, this.width, this.height, e.data.imageBorderLeft, e.data.imageBorderRight);
+            var imageBorderLeft = new Uint8ClampedArray(e.data.imageBorderLeft,0, 1600);
+            var imageBorderRight = new Uint8ClampedArray(e.data.imageBorderRight,0, 1600);
+
+            const returnVal = boxBlur(this.imageData, this.width, this.height, imageBorderLeft, imageBorderRight);
             this.imageData = returnVal.data;
             const borderLeft = returnVal.borderRetLeft;
             const borderRight = returnVal.borderRetRight;
 
+            // Convert to arraybuffers
+            var borderLeftBuf = new Uint8ClampedArray(borderLeft,0, 1600).buffer;
+            var borderRightBuf = new Uint8ClampedArray(borderRight,0, 1600).buffer;
+
                 if(e.data.iteration === 30) {
+                    var imageData= new Uint8ClampedArray(this.imageData,0, this.sizeImageData).buffer;
                     postMessage({
                         "type": "finished",
-                        "imageData": this.imageData,
+                        "imageData": imageData,
                         "width": this.width,
                         "height": this.height,
                         "startX": this.startX,
-                        "iteration": e.data.iteration
-                    });
+                        "iteration": e.data.iteration,
+                        "sizeImageData": this.sizeImageData
+                    }, [imageData]);
                 } else {
                     postMessage({
                         "type": "partialResult",
                         "iteration": e.data.iteration,
-                        'imageBorderRight': borderRight,
-                        'imageBorderLeft': borderLeft
-                    });
+                        'imageBorderRight': borderRightBuf,
+                        'imageBorderLeft': borderLeftBuf
+                    }, [borderLeftBuf, borderRightBuf]);
             }
     }
 }

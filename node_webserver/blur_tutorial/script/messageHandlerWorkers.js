@@ -6,10 +6,13 @@ function messageHandler(e) {
         // If we get a finished message from a worker, we update the UI
         case ("finished"):
             const imageData = ctx.createImageData(e.data.width, e.data.height);
-            for (let i = 0; i<imageData.data.length; i++) {
+            var typed_array = new Uint8ClampedArray(e.data.imageData,0, e.data.sizeImageData);
+            imageData.data.set(typed_array);
+            /*for (let i = 0; i<imageData.data.length; i++) {
                 const val = e.data.imageData[i];
                 imageData.data[i] = val;
             }
+            */
             ctx.putImageData(imageData, e.data.startX, 0);
             workersFinished++;
             if(workersFinished === workers.length) {
