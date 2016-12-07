@@ -1,18 +1,22 @@
 <!DOCTYPE html>
+<script src="script/loadImageData.js"></script>
+<script src="script/messageHandlerWorkers.js"></script>
+<script src="script/ballAnimation.js"></script>
+<script src="script/worker_scripts/blur.js"></script>
+<script src="script/sendBlurTask.js"></script>
+<script src="script/seqBlur.js"></script>
 <title>HTML5 Web Workers</title>
 <h1>HTML5 Web Workers</h1>
 <div id="container">
     <canvas id="myCanvas" width="300" height="300"></canvas>
 </div>
 <p id="status">Your browser does not support HTML5 Web Workers.</p>
-<button id="startBlurButton" disabled>Blur</button>
-<button id="stopButton" disabled>Stop Workers</button>
 <button id="iterationBlurButton" disabled>Run 30 iterations of blur</button>
-<button onclick="document.location = document.location;">Reload</button>
+<button id="reloadImage">Reload Image</button>
 <label for="workerCount">Number of Workers</label>
 <select id="workerCount">
-    <option>1</option>
-    <option selected>2</option>
+    <option selected>1</option>
+    <option>2</option>
     <option>4</option>
     <option>8</option>
     <option>16</option>
@@ -21,199 +25,63 @@
 <div id="image2Container"></div>
 <div id="logOutput"></div>
 <script>
-    var imageURL = "image1.png";
-    var image;
-    var ctx;
-    var ctx2;
-    var workers = [];
-    var begin;
-    var end;
-    var timeSpent;
-    var workersFinished = 0;
-    function log(s) {
-        var logOutput = document.getElementById("logOutput");
-        logOutput.innerHTML = s + "<br>" + logOutput.innerHTML;
-    }
-    function setRunningState(p) {
-// while running, the stop button is enabled and the start button is not
-        document.getElementById("startBlurButton").disabled = p;
-        document.getElementById("stopButton").disabled = !p;
-    }
+
+    // Set up variables that will be used in the global scope
+    let imageURL = "image4.png";
+    let image;
+    let ctx;
+    const workers = [];
+    let begin;
+    let end;
+    let timeSpent;
+    let workersFinished = 0;
+    const borderArray = [];
+    let partialResultCounter = 0;
+
+    // will initiate a worker with a src script
     function initWorker(src) {
-        var worker = new Worker(src);
-        worker.addEventListener("message", messageHandler, true);
-        worker.addEventListener("error", errorHandler, true);
+        const worker = new Worker(src);
+        worker.addEventListener("message", messageHandler, true)
         return worker;
     }
+
+    // Set up variables for workers
     function startBlur(isIterationBlur, iteration) {
-        var workerCount = parseInt(document.getElementById("workerCount").value);
-        var width = image.width/workerCount;
-        for (var i=0; i<workerCount; i++) {
-            var worker = initWorker("blurWorker.js");
-            worker.index = i;
-            worker.width = width;
-            workers[i] = worker;
-            let isFirst = i === 0 ? true : false;
-            let isLast = i + 1 === workerCount ? true : false;
+        const workerCount = parseInt(document.getElementById("workerCount").value);
+        if(workerCount === 1) {
+            seqBlur();
+        } else {
+            const width = image.width / workerCount;
+            for (let i=0; i<workerCount; i++) {
+                const worker = initWorker("./script/worker_scripts/blurWorker.js");
+                worker.index = i;
+                worker.width = width;
+                workers[i] = worker;
+                let isFirst = i === 0 ? true : false;
+                let isLast = i + 1 === workerCount ? true : false;
+                borderArray[i] = {};
 
-            sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration);
+                sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration);
+            }
         }
-        setRunningState(true);
-    }
-    function sendBlurTask(worker, i, chunkWidth, isFirst, isLast, isIterationBlur, iteration) {
-        var chunkHeight = image.height;
-        var chunkStartX = i * chunkWidth;
-        var chunkStartY = 0;
-        var data = ctx.getImageData(chunkStartX, chunkStartY, chunkWidth, chunkHeight).data;
-
-        var borderWidth = 1;
-        // Okey, we need to make sure that each worker get the correct borders.
-        var borderStartXleft = isFirst ? 0 : (i * chunkWidth) -1;
-
-        var imageBorderLeft = ctx.getImageData(borderStartXleft, chunkStartY, borderWidth, chunkHeight).data;
-
-        var borderStartXright = isLast ? ((i+1) * chunkWidth) -1 : ((i+1) * chunkWidth);
-        var imageBorderRight = ctx.getImageData(borderStartXright, chunkStartY, borderWidth, chunkHeight).data;
-        //ctx.putImageData(imageBorderLeft, 0, 0);
-        worker.postMessage({'type' : 'blur',
-            'imageData' : data,
-            'width' : chunkWidth,
-            'height' : chunkHeight,
-            'startX' : chunkStartX,
-            'imageBorderLeft' : imageBorderLeft,
-            'imageBorderRight' : imageBorderRight,
-            'isFirst' : isFirst,
-            'isLast' : isLast,
-            'isIteration' : isIterationBlur,
-            'iteration' : iteration
-        });
-        worker.postMessage({'type' : 'border',
-            'width' : chunkWidth,
-            'height' : chunkHeight,
-            'startX' : chunkStartX,
-            'imageBorderLeft' : imageBorderLeft,
-            'imageBorderRight' : imageBorderRight,
-            'isFirst' : isFirst,
-            'isLast' : isLast,
-            'isIteration' : isIterationBlur,
-            'iteration' : iteration
-        });
     }
 
-    function stopBlur() {
-        for (var i=0; i<workers.length; i++) {
+    // When the blur is finished, we want to terminate all the workers
+    function terminateWorkers() {
+        for (let i=0; i<workers.length; i++) {
             workers[i].terminate();
         }
-        end = Date.now();
-        timeSpent = (end - begin) / 1000 + " secs";
-        console.log(timeSpent);
-        setRunningState(false);
     }
-    function messageHandler(e) {
-        var messageType = e.data.type;
-        switch (messageType) {
-            case ("status"):
-                //log(e.data.statusText);
-                break;
-            case ("progress"):
-                var imageData = ctx.createImageData(e.data.width, e.data.height);
-                for (var i = 0; i<imageData.data.length; i++) {
-                    var val = e.data.imageData[i];
-                    if (val === null || val > 255 || val < 0) {
-                        log("illegal value: " + val + " at " + i);
-                        return;
-                    }
-                    imageData.data[i] = val;
-                }
-                ctx.putImageData(imageData, e.data.startX, 0);
-// blur the same tile again
-                /*if((e.data.isIteration && e.data.iteration <= 30) || !(e.data.isIteration)) {
-                    sendBlurTask(e.target, e.target.index, e.target.width, e.data.isFirst, e.data.isLast, e.data.isIteration, e.data.iteration + 1);
-                } else {
-                    stopBlur();
-                }
-                */
-                workersFinished++;
-                if(workersFinished === workers.length) {
-                    stopBlur();
-                }
-                break;
-            case ("borderDone"):
-                // NEED TO BE CHANGED OFCOURSE!
-                workers[Math.abs(e.target.index - 1)].postMessage({
-                    'type' : 'border',
-                    'width' : e.target.width,
-                    'height' : 400,
-                    'imageBorderLeft' : e.data.imageBorderRight,
-                    'imageBorderRight' : e.data.imageBorderLeft,
-                    'isFirst' : e.data.isFirst,
-                    'isLast' : e.data.isLast,
-                    'isIteration' : e.data.isIteration,
-                    'iteration' : e.data.iteration + 1
-                });
-            default:
-                break;
-        }
-    }
-    function errorHandler(e) {
-        log("error: " + e.message);
-    }
-    function loadImageData(url) {
-        var canvas = document.createElement('canvas');
-        ctx = canvas.getContext('2d');
-        image = new Image();
-        image.src = url;
-        document.getElementById("imageContainer").appendChild(canvas);
-        image.onload = function(){
-            canvas.width = image.width;
-            canvas.height = image.height;
-            ctx.drawImage(image, 0, 0);
-            window.imgdata = ctx.getImageData(0, 0, image.width, image.height);
-            n = ctx.createImageData(image.width, image.height);
-            setRunningState(false);
-            log("Image loaded: " + image.width + "x" + image.height + " pixels");
-        };
-    }
-    function loadDemo() {
-        log("Loading image data");
-        if (typeof(Worker) !== "undefined") {
-            document.getElementById("status").innerHTML = "Your browser supports HTML5 WebWorkers";
-            document.getElementById("stopButton").onclick = stopBlur;
-            document.getElementById('startBlurButton').addEventListener('click', () => {startBlur(false, 1)});
-            //document.getElementById("iterationBlurButton").onclick = startBlur(true);
-            document.getElementById('iterationBlurButton').addEventListener('click', () => {
-                startBlur(true, 1);
-                begin = Date.now();
-                console.time('BlurTimer');
-            });
-            loadImageData(imageURL);
-            document.getElementById("startBlurButton").disabled = true;
-            document.getElementById("stopButton").disabled = true;
-            document.getElementById("iterationBlurButton").disabled = false;
-        }
-    }
-    window.addEventListener("load", loadDemo, true);
 
-    var context;
-    var dx= 2;
-    var dy=2;
-    var y=150;
-    var x=30;
-
-    function draw(){
-        context= myCanvas.getContext('2d');
-        context.clearRect(0,0,300,300);
-        context.beginPath();
-        context.fillStyle="#0000ff";
-        context.arc(x,y,20,0,Math.PI*2,true);
-        context.closePath();
-        context.fill();
-        if( x<20 || x>280)
-            dx=-dx;
-        if( y<20 || y>280)
-            dy=-dy;
-        x+=dx;
-        y+=dy;
+    // an in range checker for the blur algorithm
+    function inRange(i, width, height) {
+        return ((i>=0) && (i < width*height*4));
     }
-    setInterval(draw,6);
+
+    // Adds benchmark results to the UI
+    function addBenchmark(timeSpent, numWorkers) {
+        const logOutput = document.getElementById("logOutput");
+        logOutput.innerHTML = timeSpent + " for " + numWorkers + " number of workers" + "<br>" + logOutput.innerHTML;
+    }
+
 </script>
