@@ -17,9 +17,13 @@
 <select id="workerCount">
     <option selected>1</option>
     <option>2</option>
+    <option>3</option>
     <option>4</option>
-    <option>8</option>
-    <option>16</option>
+    <option>5</option>
+    <option>6</option>
+    <option>7</option>
+    <option>9</option>
+    <option>17</option>
 </select>
 <div id="imageContainer"></div>
 <div id="image2Container"></div>
@@ -51,7 +55,8 @@
         if(workerCount === 1) {
             seqBlur();
         } else {
-            const width = image.width / workerCount;
+            const width = Math.floor(image.width / workerCount);
+            const remainder = image.width % workerCount;
             for (let i=0; i<workerCount; i++) {
                 const worker = initWorker("./script/worker_scripts/blurWorker.js");
                 worker.index = i;
@@ -60,8 +65,11 @@
                 let isFirst = i === 0 ? true : false;
                 let isLast = i + 1 === workerCount ? true : false;
                 borderArray[i] = {};
-
-                sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration);
+                if(isLast) {
+                    sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration, remainder);
+                } else{
+                    sendBlurTask(worker, i, width, isFirst, isLast, isIterationBlur, iteration, 0);
+                }
             }
         }
     }
